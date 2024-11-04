@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Proof Quiz</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f0f4f8;
+    }
+    .container {
+        width: 80%;
+        max-width: 600px;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        text-align: center;
+    }
+    .question {
+        font-size: 1.2em;
+        margin-bottom: 20px;
+    }
+    .scale-container, .mcq-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin: 20px 0;
+    }
+        /* For Scale Options (Fixed Square Boxes) */
+    .scale-option {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        font-size: 1em;
+        background-color: #e0e4e7;
+        color: #333;
+    }
+
+    /* For MCQ Options (Variable Width Based on Content) */
+    .mcq-option {
+    width: 250px; /* Ensure the option div is wide enough for the image */
+    display: flex;
+    flex-direction: column; /* Stack the image above the text */
+    align-items: center; /* Center align text below image */
+    justify-content: center; /* Center align items vertically */
+    padding: 10px;
+    margin: 10px 0; /* Add vertical space between options */
+    background-color: #e0e4e7;
+    color: #333;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 1em;
+    white-space: nowrap;
+}
+
+    .scale-option.selected, .mcq-option.selected {
+        background-color: #007bff;
+        color: #fff;
+    }
+
+    .mcq-option {
+        background-color: #e0e4e7;
+        padding: 10px 20px;
+        color: #333;
+    }
+    .btn {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 1em;
+        margin-top: 20px;
+        border-radius: 5px;
+    }
+    .btn:disabled {
+        background-color: #ddd;
+        cursor: not-allowed;
+    }
+    .result-container {
+        display: none;
+    }
+    .result {
+        font-size: 1.2em;
+        margin-top: 20px;
+    }
+    .percentage {
+        font-weight: bold;
+        font-style: italic;
+    }
+    .mcq-container {
+    flex-direction: column; /* Change to column to stack options vertically */
+    align-items: center; /* Center align the options */
+}
+
+
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-container">
+        <!-- Question content will appear here dynamically -->
+    </div>
+    <div class="result-container" id="result-container">
+        <div class="result" id="result"></div>
+        <button class="btn" onclick="restartQuiz()">Restart Quiz</button>
+    </div>
+    <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>Next</button>
+</div>
+
+<script>
+    const questions = [
+        {
+            question: "You see a popular influencer using a new skincare product. How likely are you to try it?",
+            type: "scale",
+            explanation: "Highlights how social proof is amplified by trusted or admired figures."
+        },
+        {
+            question: "You’re deciding between two restaurants—one with a long line, and one with no wait. Which do you choose?",
+            type: "mcq",
+            options: ["Long line", "No wait"],
+            explanation: "Emphasizes how we often trust the choice of a crowd, associating popularity with quality.",
+            correctAnswer: 0
+        },
+        {
+            question: "You’re in a bookstore, deciding between two books on the same topic. You check the ratings and reviews for each.",
+            type: "mcq",
+            options: [
+            { text: "Book A", img: "BookA.png" },
+            { text: "Book B", img: "BookB.png" }
+        ],
+            explanation: "Shows how ratings influence decision-making and provide a sense of safety in numbers.",
+            correctAnswer: 0
+        },
+        {
+            question: "You’re shopping online and find two similar products. One has hundreds of positive reviews, the other has a few. Which one are you more likely to buy?",
+            type: "mcq",
+            options: ["Product with many reviews", "Product with few reviews"],
+            explanation: "Shows how ratings influence decision-making and provide a sense of safety in numbers.",
+            correctAnswer: 0
+        },
+        {
+            question: "In an online forum, you’re reading comments about a product you’re interested in. Two comments stand out: one with 200 likes saying it’s amazing, and one with no likes saying it’s not worth the money. Which review do you believe more?",
+            type: "mcq",
+            options: ["The comment with no likes","The comment with lots of likes", "Other"],
+            explanation: "",
+            correctAnswer: 0
+        },
+        {
+            question: "When choosing a product, how much does it matter to you if it’s labeled as “most popular” or “best-seller”?",
+            type: "scale",
+            explanation: "",
+            correctAnswer: 0
+        },
+    ];
+
+    let currentQuestion = 0;
+    let scores = [];
+
+    function loadQuestion() {
+    const quizContainer = document.getElementById("quiz-container");
+    const nextButton = document.getElementById("next-btn");
+    const question = questions[currentQuestion];
+    
+    quizContainer.innerHTML = `
+        <div class="question">${question.question}</div>
+        ${question.type === 'scale' ? `
+            <div class="scale-container">
+                ${Array.from({ length: 11 }, (_, i) => `
+                    <div class="scale-option" onclick="selectScale(${i})">${i}</div>
+                `).join('')}
+            </div>
+        ` : `
+            <div class="mcq-container">
+                ${question.options.map((option, index) => `
+                    <div class="mcq-option" onclick="selectMCQ(${index})">
+                        ${option.img ? `<img src="${option.img}" alt="${option.text}" style="width: 250px; height: 250px; margin-bottom: 10px;">` : ''}
+                        <div>${option.text || option}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `}
+        <div class="explanation">${question.explanation}</div>
+    `;
+
+    nextButton.disabled = true;
+}
+
+
+    function selectScale(value) {
+        document.querySelectorAll(".scale-option").forEach(option => option.classList.remove("selected"));
+        document.querySelectorAll(".scale-option")[value].classList.add("selected");
+        scores[currentQuestion] = value * 10;
+        document.getElementById("next-btn").disabled = false;
+    }
+
+    function selectMCQ(selectedValue) {
+        document.querySelectorAll(".mcq-option").forEach(option => option.classList.remove("selected"));
+        document.querySelectorAll(".mcq-option")[selectedValue].classList.add("selected");
+        scores[currentQuestion] = selectedValue === questions[currentQuestion].correctAnswer ? 100 : 0;
+        document.getElementById("next-btn").disabled = false;
+    }
+
+    function nextQuestion() {
+        if (currentQuestion < questions.length - 1) {
+            currentQuestion++;
+            loadQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    function showResults() {
+        const averageScore = scores.reduce((acc, score) => acc + score, 0) / scores.length;
+        const resultText = document.getElementById("result");
+        let feedback;
+
+        if (averageScore <= 40) {
+            feedback = "You’re quite independent! You rarely rely on others’ choices to shape your own decisions and tend to go with what feels right for you.";
+        } else if (averageScore <= 70) {
+            feedback = "You’re moderately influenced by Social Proof. While you consider others’ opinions, you still make some decisions independently.";
+        } else {
+            feedback = "You’re highly influenced by Social Proof! You often look to others’ choices to guide your decisions, finding reassurance in crowd opinions.";
+        }
+
+        resultText.innerHTML = `You are <span class="percentage">${averageScore.toFixed(2)}%</span> likely to be influenced by Social Proof in your decisions.<br>${feedback}`;
+
+        document.getElementById("quiz-container").style.display = "none";
+        document.getElementById("next-btn").style.display = "none";
+        document.getElementById("result-container").style.display = "block";
+    }
+
+    function restartQuiz() {
+        currentQuestion = 0;
+        scores = [];
+        document.getElementById("quiz-container").style.display = "block";
+        document.getElementById("next-btn").style.display = "inline-block";
+        document.getElementById("result-container").style.display = "none";
+        loadQuestion();
+    }
+
+    loadQuestion();
+</script>
+</body>
+</html>
